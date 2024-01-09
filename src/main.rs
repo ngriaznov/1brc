@@ -47,7 +47,7 @@ fn main() -> io::Result<()> {
     let start = Instant::now();
 
     // Load and map the file into memory for fast access.
-    let file = File::open("C:\\BRC\\1brc\\measurements.txt")?;
+    let file = File::open("measurements.txt")?;
     let mmap = unsafe { MmapOptions::new().map(&file)? };
     let content = unsafe { std::str::from_utf8_unchecked(&mmap) };
 
