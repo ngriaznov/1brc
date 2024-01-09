@@ -1,43 +1,39 @@
 use hashbrown::HashMap;
 use memmap::MmapOptions;
 use rayon::prelude::*;
-use std::cmp::{max, min};
 use std::fs::File;
 use std::io;
+use std::str::FromStr;
 use std::time::Instant;
 
-// StationData holds temperature data for a station.
 #[derive(Clone)]
 struct StationData {
-    min_temp: i8,
-    max_temp: i8,
-    total_temp: i8,
-    count: i8,
+    min_temp: f32,
+    max_temp: f32,
+    total_temp: f32,
+    count: i32,
 }
 
 impl StationData {
-    // Constructor for StationData.
     fn new() -> Self {
         StationData {
-            min_temp: i8::MAX,
-            max_temp: i8::MIN,
-            total_temp: 0,
+            min_temp: f32::MAX,
+            max_temp: f32::MIN,
+            total_temp: 0.0,
             count: 0,
         }
     }
 
-    // Updates the StationData with a new temperature reading.
-    fn update(&mut self, temp: i8) {
-        self.min_temp = min(self.min_temp, temp);
-        self.max_temp = max(self.max_temp, temp);
+    fn update(&mut self, temp: f32) {
+        self.min_temp = f32::min(self.min_temp, temp);
+        self.max_temp = f32::max(self.max_temp, temp);
         self.total_temp += temp;
         self.count += 1;
     }
 
-    // Aggregates data from another StationData instance.
     fn aggregate(&mut self, other: &StationData) {
-        self.min_temp = min(self.min_temp, other.min_temp);
-        self.max_temp = max(self.max_temp, other.max_temp);
+        self.min_temp = f32::min(self.min_temp, other.min_temp);
+        self.max_temp = f32::max(self.max_temp, other.max_temp);
         self.total_temp += other.total_temp;
         self.count += other.count;
     }
@@ -47,7 +43,7 @@ fn main() -> io::Result<()> {
     let start = Instant::now();
 
     // Load and map the file into memory for fast access.
-    let file = File::open("measurements.txt")?;
+    let file = File::open("C:\\BRC\\1brc\\measurements.txt")?;
     let mmap = unsafe { MmapOptions::new().map(&file)? };
     let content = unsafe { std::str::from_utf8_unchecked(&mmap) };
 
@@ -72,20 +68,20 @@ fn main() -> io::Result<()> {
     let mut formatted_results: Vec<_> = aggregated_results
         .into_iter()
         .map(|(name, data)| {
-            let mean = (data.total_temp as f32) / (data.count as f32 * 10.0);
+            let mean = data.total_temp / data.count as f32;
             (
                 name,
                 format!(
                     "{:.1}/{:.1}/{:.1}",
-                    data.min_temp as f32 / 10.0,
+                    data.min_temp,
                     mean,
-                    data.max_temp as f32 / 10.0
+                    data.max_temp
                 ),
             )
         })
         .collect();
 
-    // Efficient string concatenation for output.
+    // Concatenate resulting string
     let mut output_result = String::with_capacity(estimated_unique_stations * 50);
     output_result.push('{');
     formatted_results.sort_unstable_by(|a, b| a.0.cmp(&b.0));
@@ -96,7 +92,6 @@ fn main() -> io::Result<()> {
     output_result.push('}');
     output_result.push('\n');
 
-    // Display results.
     println!("{}", output_result);
 
     // Report time taken for processing.
@@ -133,29 +128,6 @@ fn split_once(input: &str, delimiter: u8) -> (&str, &str) {
 }
 
 // Parses a temperature value from a string.
-fn parse_temperature(temp_str: &str) -> i8 {
-    let bytes = temp_str.as_bytes();
-    let mut temp = 0i8;
-    let mut negative = false;
-    let mut decimal_found = false;
-
-    for &byte in bytes {
-        match byte {
-            b'-' => negative = true,
-            b'.' => decimal_found = true,
-            _ if byte.is_ascii_digit() => {
-                temp = temp * 10 + (byte - b'0') as i8;
-                if decimal_found {
-                    decimal_found = false;
-                }
-            }
-            _ => {}
-        }
-    }
-
-    if negative {
-        -temp
-    } else {
-        temp
-    }
+fn parse_temperature(temp_str: &str) -> f32 {
+    f32::from_str(temp_str).unwrap()
 }
